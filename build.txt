@@ -1,0 +1,28 @@
+#modsecurity:
+cd /home/eric/Project/ModSecurity/
+./build.sh
+./configure
+make
+sudo make install
+
+#nginx:
+cd /home/eric/Project/nginx/
+sudo auto/configure --add-dynamic-module=/home/eric/Project/ModSecurity/ModSecurity-nginx --with-compat
+
+#set:
+sudo cp /usr/local/modsecurity/lib/libmodsecurity.so.3.0.14 /lib/x86_64-linux-gnu/
+cd /lib/x86_64-linux-gnu/
+sudo ldconfig
+
+#reload:
+sudo /usr/local/nginx/sbin/nginx -s stop
+sudo /usr/local/nginx/sbin/nginx
+
+#test:
+curl -X POST --data "aaaa" "http://localhost/?name=admin'or'1'='1"
+cat /home/eric/Project/test/log/test.txt
+cat /tmp/test-log.txt
+
+#clear log:
+rm /home/eric/Project/test/log/test.txt
+sudo rm /tmp/test-log.txt
