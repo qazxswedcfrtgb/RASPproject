@@ -8,6 +8,8 @@ sudo make install
 #nginx:
 cd /home/eric/Project/nginx/
 sudo auto/configure --add-dynamic-module=/home/eric/Project/ModSecurity/ModSecurity-nginx --with-compat
+sudo make
+sudo make install
 
 #set:
 sudo cp /usr/local/modsecurity/lib/libmodsecurity.so.3.0.14 /lib/x86_64-linux-gnu/
