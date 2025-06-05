@@ -61,24 +61,67 @@
 #include <cstring>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <unistd.h>
+#include <sstream>
 
-static int log_parts_collected = 0;
-static std::string modsec_log_buf;
-static bool method_is_get = false;
+static std::string uri_log_buf;
+static std::string header_log_buf;
 
-void send_log_to_backend(const std::string &data) {
-    std::ofstream tmp("/tmp/log-test.txt", std::ios::app);
-    tmp << modsec_log_buf;
-    tmp.close();
-    // return;
+void send_log_to_backend() {
+    // 準備要送出的 buffer
+    char uri_len_hex[9], header_len_hex[9];  // +1 for null-terminator
+    snprintf(uri_len_hex, sizeof(uri_len_hex), "%08X", (unsigned int)uri_log_buf.length());
+    snprintf(header_len_hex, sizeof(header_len_hex), "%08X", (unsigned int)header_log_buf.length());
+
+    // 準備送出的資料
+    std::string send_buf;
+    send_buf += uri_len_hex;
+    send_buf += uri_log_buf;
+    send_buf += header_len_hex;
+    send_buf += header_log_buf;
+
+    // 傳送
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) return;
 
     struct sockaddr_in serv_addr{};
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(9000);
-    inet_pton(AF_INET, "10.0.2.7", &serv_addr.sin_addr); // backend IP
+    serv_addr.sin_port = htons(9999);
+    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+
+    struct timeval timeout{};
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 300000;
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+    if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+        close(sock);
+        return;
+    }
+
+    send(sock, send_buf.c_str(), send_buf.length(), 0);
+    close(sock);
+
+    // 清除緩衝
+    uri_log_buf.clear();
+    header_log_buf.clear();
+    //
+    std::ofstream tmp("/tmp/log-test.txt", std::ios::app);
+    tmp << send_buf;
+    tmp.close();
+}
+
+
+void send_log_to_backend(const std::string &data) {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) return;
+
+    struct sockaddr_in serv_addr{};
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(9999);
+    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr); // backend IP
 
     // 設定 connect timeout
     struct timeval timeout{};
@@ -95,25 +138,6 @@ void send_log_to_backend(const std::string &data) {
     send(sock, data.c_str(), data.length(), 0);
     close(sock);
 }
-
-
-
-void try_send_log() {
-    log_parts_collected++;
-    if (log_parts_collected >= 3 || (log_parts_collected >= 2 && method_is_get)) {
-        // 替換成你實際的傳送邏輯，例如 HTTP POST to backend
-        send_log_to_backend(modsec_log_buf);
-
-        // Reset
-        modsec_log_buf.clear();
-        log_parts_collected = 0;
-        method_is_get = false;
-    }
-}
-
-
-//
-
 
 using modsecurity::actions::Action;
 using modsecurity::RequestBodyProcessor::Multipart;
@@ -1928,40 +1952,13 @@ extern "C" int msc_process_uri(Transaction *transaction, const char *uri,
     const char *protocol, const char *http_version) {
 
 // change
-    modsec_log_buf += "[ModSec LOG] --- URI ---\n";
-    modsec_log_buf += "URI: ";
-    modsec_log_buf += (uri ? uri : "(null)");
-    modsec_log_buf += "\n";
-    modsec_log_buf += "Protocol: ";
-    modsec_log_buf += (protocol ? protocol : "(null)");
-    modsec_log_buf += "\n";
-    modsec_log_buf += "HTTP Version: ";
-    modsec_log_buf += (http_version ? http_version : "(null)");
-    modsec_log_buf += "\n------------------------\n";
-
-    // 嘗試擷取 method
-    std::unique_ptr<std::string> method = transaction->m_variableRequestMethod.resolveFirst();
-    if (method && *method == "GET") {
-        method_is_get = true;
-    }
-
-    try_send_log();
-
-
-    // std::ofstream log("/home/eric/Project/test/log/test.txt", std::ios::app);
-    // log << "[ModSec LOG] --- URI ---\n";
-    // log << "URI: " << (uri ? uri : "(null)") << "\n";
-    // log << "Protocol: " << (protocol ? protocol : "(null)") << "\n";
-    // log << "HTTP Version: " << (http_version ? http_version : "(null)") << "\n";
-    // log << "------------------------\n";
-    // log.close();
-
-    // FILE* fp = fopen("/tmp/test-log.txt", "a");
-    // if (fp) {
-    //     fprintf(fp, "[msc_process_uri] uri: %s, protocol: %s, http_version: %s\n",
-    //             uri ? uri : "(null)", protocol ? protocol : "(null)", http_version ? http_version : "(null)");
-    //     fclose(fp);
-    // }
+    uri_log_buf  += (protocol ? protocol : "(null)");
+    uri_log_buf  += " ";
+    uri_log_buf  += (uri ? uri : "(null)");
+    uri_log_buf  += " ";
+    uri_log_buf  += "HTTP/";
+    uri_log_buf  += (http_version ? http_version : "(null)");
+    uri_log_buf  += "\n";
 //
     return transaction->processURI(uri, protocol, http_version);
 }
@@ -1985,37 +1982,17 @@ extern "C" int msc_process_uri(Transaction *transaction, const char *uri,
  */
 extern "C" int msc_process_request_headers(Transaction *transaction) {
 //change
-    modsec_log_buf += "[ModSec LOG] --- Request Headers ---\n";
     std::vector<const modsecurity::VariableValue *> headers;
     transaction->m_variableRequestHeaders.resolve(&headers);
     for (auto &h : headers) {
-        modsec_log_buf += h->getKey();
-        modsec_log_buf += ": ";
-        modsec_log_buf += h->getValue();
-        modsec_log_buf += "\n";
+        header_log_buf += h->getKey();
+        header_log_buf += ": ";
+        header_log_buf += h->getValue();
+        header_log_buf += "\n";
         delete h;
     }
-    modsec_log_buf += "-----------------------------------\n";
 
-    try_send_log();
-
-
-    // std::ofstream log("/home/eric/Project/test/log/test.txt", std::ios::app);
-    // log << "[ModSec LOG] --- Request Headers ---\n";
-    // std::vector<const modsecurity::VariableValue *> headers;
-    // transaction->m_variableRequestHeaders.resolve(&headers);
-    // for (auto &h : headers) {
-    //     log << h->getKey() << ": " << h->getValue() << "\n";
-    //     delete h;
-    // }
-    // log << "-----------------------------------\n";
-    // log.close();
-
-    // FILE* fp = fopen("/tmp/test-log.txt", "a");
-    // if (fp) {
-    //     fprintf(fp, "[msc_process_request_body] Called\n");
-    //     fclose(fp);
-    // }
+    send_log_to_backend();
 //
     return transaction->processRequestHeaders();
 }
@@ -2041,53 +2018,6 @@ extern "C" int msc_process_request_headers(Transaction *transaction) {
  *
  */
 extern "C" int msc_process_request_body(Transaction *transaction) {
-//change
-    modsec_log_buf += "[ModSec LOG] --- Request Body ---\n";
-
-    std::unique_ptr<std::string> ct = transaction->m_variableRequestHeaders.resolveFirst("Content-Type");
-    if (ct != nullptr) {
-        modsec_log_buf += "Content-Type: " + *ct + "\n";
-    }
-
-    std::string body = transaction->m_requestBody.str();
-    modsec_log_buf += "Body (" + std::to_string(body.size()) + " bytes):\n";
-
-    if (body.size() > 10000) {
-        modsec_log_buf += body.substr(0, 10000) + "\n...[truncated]...\n";
-    } else {
-        modsec_log_buf += body + "\n";
-    }
-
-    modsec_log_buf += "-------------------------------\n";
-
-    try_send_log();
-
-
-    // std::ofstream log("/home/eric/Project/test/log/test.txt", std::ios::app);
-    // log << "[ModSec LOG] --- Request Body ---\n";
-
-    // std::unique_ptr<std::string> ct = transaction->m_variableRequestHeaders.resolveFirst("Content-Type");
-    // if (ct != nullptr) {
-    //     log << "Content-Type: " << *ct << "\n";
-    // }
-
-    // std::string body = transaction->m_requestBody.str();
-    // log << "Body (" << body.size() << " bytes):\n";
-    // if (body.size() > 10000) {
-    //     log << body.substr(0, 10000) << "\n...[truncated]...\n";
-    // } else {
-    //     log << body << "\n";
-    // }
-
-    // log << "-------------------------------\n";
-    // log.close();
-
-    // FILE* fp = fopen("/tmp/test-log.txt", "a");
-    // if (fp) {
-    //     fprintf(fp, "[msc_process_request_headers] Called\n");
-    //     fclose(fp);
-    // }
-//
     return transaction->processRequestBody();
 }
 
@@ -2494,4 +2424,3 @@ extern "C" int msc_set_request_hostname(Transaction *transaction,
 
 
 }  // namespace modsecurity
-
