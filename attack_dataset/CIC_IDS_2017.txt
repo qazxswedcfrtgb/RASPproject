@@ -1,0 +1,17 @@
+他有pcap原始封包跟csv兩種，csv裡面看起來就是，一些外層資料沒有辦法找到payload，但pcap東西太多了，儲存空間也點缺乏。
+
+所以目前就是姑且把csv的分類好，去掉benign後，wc -l結果:
+      1967 ./class/Bot.csv
+    128028 ./class/DDoS.csv
+     10294 ./class/DoS_GoldenEye.csv
+    231074 ./class/DoS_Hulk.csv
+      5500 ./class/DoS_Slowhttptest.csv
+      5797 ./class/DoS_slowloris.csv
+      7939 ./class/FTP-Patator.csv
+        12 ./class/Heartbleed.csv
+        37 ./class/Infiltration.csv
+    158931 ./class/PortScan.csv
+      5898 ./class/SSH-Patator.csv
+      1508 ./class/Web_Attack_Brute_Force.csv
+        22 ./class/Web_Attack_Sql_Injection.csv
+       653 ./class/Web_Attack_XSS.csv

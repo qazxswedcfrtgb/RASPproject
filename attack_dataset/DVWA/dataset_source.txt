@@ -1,0 +1,13 @@
+kaggle上找找看，目前看到四個可能可以用的(有url的網路攻擊dataset):
+
+要從裡面挑出defacement的，不然malicious中很多都是phishing url:
+https://www.kaggle.com/datasets/naveenbhadouria/malicious
+啥說明都沒有很不明所以的，但是有url，但應該不是很好用:https://www.kaggle.com/datasets/natasa213/url-attack?select=preprocessed_urldata.csv
+這個好像挺不錯的，還有分類:https://www.kaggle.com/datasets/zhourui0712/web-attack-classfication?select=SQL.csv
+要從裡面挑abnorm的:https://www.kaggle.com/datasets/evg3n1j/httpparamsdataset
+
+https://www.unb.ca/cic/datasets/ids.html
+https://www.unb.ca/cic/datasets/ids-2017.html
+https://www.unb.ca/cic/datasets/ids-2018.html
+https://osnadata.ub.uni-osnabrueck.de/dataset.xhtml?persistentId=doi:10.26249/FK2/MOCIY8
+

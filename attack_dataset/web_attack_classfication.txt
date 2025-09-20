@@ -1,0 +1,5 @@
+測試了SQLI跟CMDI的dataset on DVWA:
+SQL 就是，如果參數有id跟合適的sqli payload就會成功(看他回復的訊息有沒有first name)，其餘的類型可能就會被無視，有時候也會造成syntax error
+因為他的五份csv格式都是一樣的，所以我想要復現攻擊資訊量應該是充足的
+
+CMD的沒有辦法成功，那我觀察下應該是因為DVWA的CMDI(exec)是用POST的來傳遞的，然後藥用ip欄位來注入，然後這個dataset中POST的數量本來就不多，其中更是沒有半個有包含ip欄位的，所以就自然沒有成功案例

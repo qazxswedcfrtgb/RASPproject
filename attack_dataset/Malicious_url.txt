@@ -1,0 +1,4 @@
+雖然我已經去除了phishing等等的，留下了defacement的，根據他的文件說明:
+Defacement URLs: Defacement URLs are generally created by hackers with the intention of breaking into a web server and replacing the hosted website with one of their own, using techniques such as code injection, cross-site scripting, etc. Common targets of defacement URLs are religious websites, government websites, bank websites, and corporate websites.​
+
+這樣篩選出來應該就是把攻擊對象改成我們自己要測試的對象就行了，但他的攻擊手法缺乏分類，就是一串url，我就是把攻擊對象改成DVWA的SQLI，然後打了都沒效果，理論上直接把url後續參數拿來用應該是沒問題但就是，可能沒運氣那麼好剛好對上DVWA要的格式

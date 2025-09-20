@@ -1,0 +1,7 @@
+整理後有用的資訊只有payload，結果上跟前一個相同，還省去了去除原本domain的工作，而且有label區分攻擊手段，雖然我還沒做，但應該單純把domain設好，然後append上payload，簡單的GET攻擊應該就能算成了吧
+
+各種分類的資料筆數(要再-1因為含標題):
+     90 split_by_attack_type/cmdi.csv
+    291 split_by_attack_type/path-traversal.csv
+  10853 split_by_attack_type/sqli.csv
+    533 split_by_attack_type/xss.csv

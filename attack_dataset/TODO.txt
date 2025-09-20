@@ -1,0 +1,2 @@
+利用Vulnhub的POC machine或是DVWA來測試
+試著把各個dataset轉換成攻擊
